@@ -6,7 +6,7 @@ import speech_recognition as sr
 from googletrans import Translator
 import deepl
 import logging
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template_string
 
 # Configuratie van logging voor foutopsporing en analyse
 logging.basicConfig(filename='ai_education.log', level=logging.INFO, 
@@ -14,9 +14,37 @@ logging.basicConfig(filename='ai_education.log', level=logging.INFO,
 
 app = Flask(__name__)
 
+# HTML Template for interactive AI chat
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Education Chat</title>
+    <script>
+        async function askAI() {
+            let question = document.getElementById("question").value;
+            let response = await fetch("/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: question })
+            });
+            let data = await response.json();
+            document.getElementById("response").innerText = data.answer;
+        }
+    </script>
+</head>
+<body>
+    <h1>Welcome to AI Education Chat</h1>
+    <input type="text" id="question" placeholder="Ask a question...">
+    <button onclick="askAI()">Ask</button>
+    <p id="response"></p>
+</body>
+</html>
+"""
+
 @app.route("/")
 def home():
-    return "AI Education Platform is Running!"
+    return render_template_string(HTML_TEMPLATE)
 
 # API-route om beschikbare cursussen op te halen
 @app.route("/courses", methods=["GET"])
@@ -78,26 +106,12 @@ class AIEducationPlatform:
             "south_america_solutions": "Praktische lessen gericht op Zuid-Amerikaanse problematiek.",
             "asia_solutions": "Duurzame ontwikkelingsoplossingen voor Aziatische regio's.",
             "advanced_engineering": "Geavanceerde ingenieurswetenschappen en toepassingen.",
-            "legal_structures": "Basiskennis van lokale juridische systemen en rechten.",
-            "community_projects": "Samenwerkingsprojecten om lokale problemen op te lossen.",
-            "personalized_learning": "Gepersonaliseerde leertrajecten gebaseerd op doelen en probleemoplossing.",
-            "community_platform": "Samenwerking en kennisdeling met andere studenten.",
-            "offline_learning": "Downloadbare lessen en leertrajecten voor offline gebruik.",
-            "gamification": "Beloningssystemen, certificaten en motivatie-elementen voor progressie.",
-            "ai_progress_analysis": "AI-gebaseerde voortgangsanalyse en feedback.",
-            "mentor_support": "Virtuele AI-mentor en gemeenschapsmentoring.",
-            "real_world_projects": "Projectmatig leren met real-life toepassingen.",
-            "optimized_offline_mode": "Efficiënte data-opslag en synchronisatie voor offline gebruik.",
-            "self_updating_ai": "Automatische uitbreiding van kennis, lessen en onderwerpen via continue AI-leren.",
-            "collaborative_learning": "Samenwerkingsprojecten en peer-to-peer beoordeling.",
-            "sms_learning": "Ondersteuning voor leren via sms voor lage-connectiviteit regio's."
         }
         self.translator = Translator()
         self.deepl_translator = deepl.Translator("your-deepl-api-key")
         self.speech_recognizer = sr.Recognizer()
         self.database = "ai_education.db"
         self.init_database()
-        self.init_lessons()
         logging.info("AIEducationPlatform succesvol geïnitialiseerd.")
     
     def init_database(self):
