@@ -14,30 +14,48 @@ logging.basicConfig(filename='ai_education.log', level=logging.INFO,
 
 app = Flask(__name__)
 
-# HTML Template for interactive AI chat
+# HTML Template for interactive AI chat with chat history
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
     <title>AI Education Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; text-align: center; }
+        .chat-box { width: 50%; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px gray; }
+        .message { text-align: left; margin: 10px 0; }
+        .user { color: blue; }
+        .ai { color: green; }
+        input { width: 80%; padding: 10px; margin-top: 10px; }
+        button { padding: 10px 20px; cursor: pointer; }
+    </style>
     <script>
         async function askAI() {
             let question = document.getElementById("question").value;
+            if (!question.trim()) return;
+            
+            let chatBox = document.getElementById("chat");
+            chatBox.innerHTML += `<p class='message user'><strong>You:</strong> ${question}</p>`;
+            
             let response = await fetch("/ask", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ question: question })
             });
             let data = await response.json();
-            document.getElementById("response").innerText = data.answer;
+            chatBox.innerHTML += `<p class='message ai'><strong>AI:</strong> ${data.answer}</p>`;
+            
+            document.getElementById("question").value = "";
         }
     </script>
 </head>
 <body>
     <h1>Welcome to AI Education Chat</h1>
-    <input type="text" id="question" placeholder="Ask a question...">
-    <button onclick="askAI()">Ask</button>
-    <p id="response"></p>
+    <div class="chat-box">
+        <div id="chat"></div>
+        <input type="text" id="question" placeholder="Ask a question...">
+        <button onclick="askAI()">Ask</button>
+    </div>
 </body>
 </html>
 """
@@ -61,22 +79,15 @@ def ask_ai():
         return jsonify({"error": "Please provide a question"}), 400
     
     platform = AIEducationPlatform()
-    
-    # Detect the language of the input question
     translator = Translator()
     detected_lang = translator.detect(question).lang
     
-    # Provide general guidance if the question is broad
-    general_responses = [
-        "I can help you learn many things! Are you interested in math, science, languages, or something else?",
-        "There are many subjects to explore! Would you like to start with literacy, technology, or problem-solving skills?",
-        "Education is powerful! Do you need help with basic skills, advanced knowledge, or career planning?"
-    ]
-    
-    if len(question.split()) <= 3:  # If the question is too vague
-        response = random.choice(general_responses)
+    if len(question.split()) <= 3:
+        course_suggestions = "Here are some courses you might find interesting:\n"
+        for course, description in platform.courses.items():
+            course_suggestions += f"- {course}: {description}\n"
+        response = f"I can help with many subjects! Which topic interests you?\n{course_suggestions}"
     else:
-        # Match question to the best course
         best_match = None
         best_match_score = 0
         for course, description in platform.courses.items():
@@ -90,50 +101,24 @@ def ask_ai():
         else:
             response = "I couldn't find an exact match, but keep exploring and learning! Try asking in a different way."
     
-    # Translate response back to detected language if necessary
     if detected_lang != "en":
         response = translator.translate(response, dest=detected_lang).text
     
     return jsonify({"answer": response})
 
-# API-route om gebruikersvoortgang op te halen (mocked)
-@app.route("/progress/<user_id>", methods=["GET"])
-def get_progress(user_id):
-    return jsonify({"user_id": user_id, "progress": "Not implemented yet"})
-
 class AIEducationPlatform:
     def __init__(self):
         self.courses = {
-            "basic_literacy": "Leer basislezen en schrijven in je eigen taal.",
-            "math_fundamentals": "Basisrekenen: optellen, aftrekken, vermenigvuldigen en delen.",
-            "science_basics": "Introductie tot natuurwetenschappen: biologie, scheikunde en natuurkunde.",
-            "advanced_math": "Algebra, statistiek en calculus.",
-            "computer_science": "Basisprogrammeren, AI en webontwikkeling.",
-            "social_studies": "Geschiedenis, aardrijkskunde en burgerschapsonderwijs.",
-            "language_development": "Basisgrammatica en woordenschat in verschillende talen.",
-            "agriculture": "Duurzame landbouwtechnieken en voedselproductie.",
-            "healthcare_basics": "EHBO, anatomie en medische basiskennis.",
-            "entrepreneurship": "Start je eigen kleine onderneming met microfinanciering.",
-            "critical_thinking": "Probleemoplossend denken en logica.",
-            "academic_research": "Onderzoeksvaardigheden en wetenschappelijke methodologie.",
-            "practical_skills": "Handige vaardigheden voor dagelijks leven.",
-            "leadership_teamwork": "Hoe werk je samen en neem je leiderschap?",
-            "financial_literacy": "Hoe beheer je geld en start je een klein project?",
-            "environment_sustainability": "Hoe zorg je voor een duurzame toekomst?",
-            "law_politics": "Mensenrechten, basiswetgeving en politieke systemen.",
-            "technology_basics": "Digitale vaardigheden en cyberveiligheid.",
-            "mechanical_repair": "Basisvaardigheden in het repareren van fietsen, gereedschap en eenvoudige machines.",
-            "food_security": "Hoe verbouw en bewaar je voedsel om honger te voorkomen?",
-            "renewable_energy": "Hoe kun je zonne- en windenergie gebruiken in je gemeenschap?",
-            "disaster_preparedness": "Wat te doen bij natuurrampen zoals overstromingen en aardbevingen?",
-            "basic_business": "Hoe start en beheer je een klein bedrijf?",
+            "basic_literacy": "Learn basic reading and writing skills in your language.",
+            "math_fundamentals": "Basic arithmetic: addition, subtraction, multiplication, and division.",
+            "science_basics": "Introduction to biology, chemistry, and physics.",
+            "computer_science": "Learn the basics of coding, AI, and web development.",
+            "entrepreneurship": "Learn how to start and manage a small business.",
+            "environment_sustainability": "How to live sustainably and care for the environment.",
         }
         self.translator = Translator()
-        self.deepl_translator = deepl.Translator("your-deepl-api-key")
-        self.speech_recognizer = sr.Recognizer()
         self.database = "ai_education.db"
         self.init_database()
-        logging.info("AIEducationPlatform succesvol geïnitialiseerd.")
     
     def init_database(self):
         conn = sqlite3.connect(self.database)
@@ -145,7 +130,6 @@ class AIEducationPlatform:
                             progress_percentage INTEGER)''')
         conn.commit()
         conn.close()
-        logging.info("Database geconfigureerd.")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
