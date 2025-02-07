@@ -15,7 +15,7 @@ logging.basicConfig(filename='ai_education.log', level=logging.INFO,
 app = Flask(__name__)
 user_sessions = {}  # Store user progress
 
-# HTML Template for interactive AI chat with chat history
+# HTML Template for interactive AI chat with chat history and buttons
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -23,17 +23,19 @@ HTML_TEMPLATE = """
     <title>AI Education Chat</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; text-align: center; }
-        .chat-box { width: 50%; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px gray; }
+        .chat-box { width: 50%; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px gray; padding-bottom: 20px; }
         .message { text-align: left; margin: 10px 0; }
         .user { color: blue; }
         .ai { color: green; }
         input { width: 80%; padding: 10px; margin-top: 10px; }
-        button { padding: 10px 20px; cursor: pointer; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
     </style>
     <script>
-        async function askAI() {
-            let questionInput = document.getElementById("question");
-            let question = questionInput.value;
+        async function askAI(question) {
+            if (!question) {
+                question = document.getElementById("question").value;
+                document.getElementById("question").value = "";
+            }
             if (!question.trim()) return;
             
             let chatBox = document.getElementById("chat");
@@ -46,8 +48,6 @@ HTML_TEMPLATE = """
             });
             let data = await response.json();
             chatBox.innerHTML += `<p class='message ai'><strong>AI:</strong> ${data.answer}</p>`;
-            
-            questionInput.value = "";
         }
         
         document.addEventListener("DOMContentLoaded", function() {
@@ -63,7 +63,11 @@ HTML_TEMPLATE = """
     <h1>Welcome to AI Education Chat</h1>
     <div class="chat-box">
         <div id="chat"></div>
-        <button onclick="askAI()">Start Learning</button>
+        <button onclick="askAI('Start Learning')">Start Learning</button>
+        <button onclick="askAI('1')">Beginner</button>
+        <button onclick="askAI('2')">Intermediate</button>
+        <button onclick="askAI('3')">Advanced</button>
+        <br>
         <input type="text" id="question" placeholder="Type here...">
     </div>
 </body>
