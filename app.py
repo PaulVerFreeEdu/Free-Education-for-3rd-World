@@ -31,7 +31,8 @@ HTML_TEMPLATE = """
     </style>
     <script>
         async function askAI() {
-            let question = document.getElementById("question").value;
+            let questionInput = document.getElementById("question");
+            let question = questionInput.value;
             if (!question.trim()) return;
             
             let chatBox = document.getElementById("chat");
@@ -45,16 +46,24 @@ HTML_TEMPLATE = """
             let data = await response.json();
             chatBox.innerHTML += `<p class='message ai'><strong>AI:</strong> ${data.answer}</p>`;
             
-            document.getElementById("question").value = "";
+            questionInput.value = "";
         }
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("question").addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    askAI();
+                }
+            });
+        });
     </script>
 </head>
 <body>
     <h1>Welcome to AI Education Chat</h1>
     <div class="chat-box">
         <div id="chat"></div>
-        <input type="text" id="question" placeholder="Ask a question...">
-        <button onclick="askAI()">Ask</button>
+        <button onclick="askAI()">Start Learning</button>
+        <input type="text" id="question" placeholder="Type here...">
     </div>
 </body>
 </html>
@@ -64,42 +73,27 @@ HTML_TEMPLATE = """
 def home():
     return render_template_string(HTML_TEMPLATE)
 
-# API-route om beschikbare cursussen op te halen
-@app.route("/courses", methods=["GET"])
-def get_courses():
-    platform = AIEducationPlatform()
-    return jsonify({"courses": list(platform.courses.keys())})
-
-# API-route om de AI een vraag te stellen
 @app.route("/ask", methods=["POST"])
 def ask_ai():
     data = request.json
     question = data.get("question", "").strip()
-    if not question:
-        return jsonify({"error": "Please provide a question"}), 400
     
     platform = AIEducationPlatform()
     translator = Translator()
     detected_lang = translator.detect(question).lang
     
-    if len(question.split()) <= 3:
-        course_suggestions = "Here are some courses you might find interesting:\n"
-        for course, description in platform.courses.items():
-            course_suggestions += f"- {course}: {description}\n"
-        response = f"I can help with many subjects! Which topic interests you?\n{course_suggestions}"
+    # Initial learning level selection
+    if "start learning" in question.lower():
+        response = "What is your current learning level?\n1. Beginner (Basic literacy, math)\n2. Intermediate (Science, Technology)\n3. Advanced (Entrepreneurship, Sustainability)\nPlease type 1, 2, or 3."
+    elif question in ["1", "2", "3"]:
+        if question == "1":
+            response = "Great! Let's start with Basic Literacy and Math.\n\n**Lesson 1: Basic Literacy**\n- Letters and Sounds\n- How to form simple words\n- Understanding basic sentences\n\n**Lesson 2: Basic Writing**\n- Constructing simple sentences\n- Writing short stories\n- Understanding punctuation\n\n**Lesson 3: Basic Math**\n- Counting numbers\n- Simple addition and subtraction\n- Basic multiplication and division\n\nWould you like to continue with Literacy or switch to Math?"
+        elif question == "2":
+            response = "Nice! Science and Technology are exciting fields.\n\n**Lesson 1: Introduction to Science**\n- What is science?\n- Observations and experiments\n- Basic elements of nature\n\n**Lesson 2: Introduction to Technology**\n- Understanding digital tools\n- The internet and its uses\n- Basic programming concepts\n\n**Lesson 3: Physics Basics**\n- Understanding motion and energy\n- Simple machines and their uses\n\nWould you like to explore Chemistry, Biology, or Coding next?"
+        elif question == "3":
+            response = "Advanced learning! Let's start with Business Basics.\n\n**Lesson 1: Introduction to Business**\n- What is a business?\n- How do businesses operate?\n- Understanding trade and economy\n\n**Lesson 2: Financial Literacy**\n- Budgeting and saving money\n- Understanding investments\n- Managing personal and business finances\n\n**Lesson 3: Sustainable Development**\n- Environmental conservation\n- Sustainable business practices\n- Social entrepreneurship\n\nWould you like to continue with Entrepreneurship, Sustainability, or Business Management?"
     else:
-        best_match = None
-        best_match_score = 0
-        for course, description in platform.courses.items():
-            match_score = sum(1 for word in question.lower().split() if word in course.lower())
-            if match_score > best_match_score:
-                best_match = course
-                best_match_score = match_score
-        
-        if best_match:
-            response = f"Based on your question, you might be interested in '{best_match}': {platform.courses[best_match]}"
-        else:
-            response = "I couldn't find an exact match, but keep exploring and learning! Try asking in a different way."
+        response = "I can guide you step by step! Type 'Start Learning' to begin."
     
     if detected_lang != "en":
         response = translator.translate(response, dest=detected_lang).text
