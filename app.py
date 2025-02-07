@@ -56,11 +56,25 @@ def get_courses():
 @app.route("/ask", methods=["POST"])
 def ask_ai():
     data = request.json
-    question = data.get("question", "")
+    question = data.get("question", "").lower()
     if not question:
         return jsonify({"error": "Please provide a question"}), 400
     
-    response = f"That is an interesting question: '{question}'. Try to think critically!"
+    platform = AIEducationPlatform()
+    best_match = None
+    best_match_score = 0
+    
+    for course, description in platform.courses.items():
+        match_score = sum(1 for word in question.split() if word in course.lower())
+        if match_score > best_match_score:
+            best_match = course
+            best_match_score = match_score
+    
+    if best_match:
+        response = f"Based on your question, you might be interested in '{best_match}': {platform.courses[best_match]}"
+    else:
+        response = "I couldn't find an exact match, but keep exploring and learning! Try asking in a different way."
+    
     return jsonify({"answer": response})
 
 # API-route om gebruikersvoortgang op te halen (mocked)
@@ -105,7 +119,7 @@ class AIEducationPlatform:
             "africa_solutions": "Specifieke oplossingen voor uitdagingen in Afrika.",
             "south_america_solutions": "Praktische lessen gericht op Zuid-Amerikaanse problematiek.",
             "asia_solutions": "Duurzame ontwikkelingsoplossingen voor Aziatische regio's.",
-            "advanced_engineering": "Geavanceerde ingenieurswetenschappen en toepassingen.",
+            "advanced_engineering": "Geavanceerde ingenieurswetenschappen en toepassingen."
         }
         self.translator = Translator()
         self.deepl_translator = deepl.Translator("your-deepl-api-key")
