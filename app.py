@@ -7,6 +7,7 @@ from googletrans import Translator
 import deepl
 import logging
 from flask import Flask, jsonify, request, render_template_string
+from bs4 import BeautifulSoup
 
 # Configuratie van logging voor foutopsporing en analyse
 logging.basicConfig(filename='ai_education.log', level=logging.INFO, 
@@ -14,6 +15,29 @@ logging.basicConfig(filename='ai_education.log', level=logging.INFO,
 
 app = Flask(__name__)
 user_sessions = {}  # Store user progress
+
+# Function to scrape educational lessons dynamically
+def scrape_lesson(subject, level):
+    search_query = f"basic {subject} lesson for {level} learners site:khanacademy.org OR site:wikipedia.org OR site:openstax.org"
+    search_url = f"https://www.google.com/search?q={search_query}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    try:
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        results = soup.find_all("a", href=True)
+        
+        for result in results:
+            url = result["href"]
+            if "http" in url:
+                lesson_response = requests.get(url, headers=headers)
+                lesson_soup = BeautifulSoup(lesson_response.text, "html.parser")
+                paragraphs = lesson_soup.find_all("p")
+                content = "\n".join([p.get_text() for p in paragraphs[:5]])
+                return f"**Lesson on {subject.capitalize()} (Level: {level.capitalize()})**\n{content}\nSource: {url}"
+    except Exception as e:
+        logging.error(f"Error scraping lesson: {str(e)}")
+        return "Error fetching lesson. Please try again later."
 
 # HTML Template for interactive AI chat with dynamic buttons
 HTML_TEMPLATE = """
@@ -115,12 +139,7 @@ def ask_ai():
         buttons = ["Literacy", "Math", "Science", "Technology", "Business"]
     elif question in ["literacy", "math", "science", "technology", "business"]:
         user_sessions[user_id]["subject"] = question
-        user_sessions[user_id]["progress"] = 1
-        response = get_lesson(user_sessions[user_id]["level"], user_sessions[user_id]["subject"], user_sessions[user_id]["progress"])
-        buttons = ["Next Lesson"]
-    elif question == "next lesson":
-        user_sessions[user_id]["progress"] += 1
-        response = get_lesson(user_sessions[user_id]["level"], user_sessions[user_id]["subject"], user_sessions[user_id]["progress"])
+        response = scrape_lesson(user_sessions[user_id]["subject"], user_sessions[user_id]["level"])
         buttons = ["Next Lesson"]
     else:
         response = "I can guide you step by step! Type 'Start Learning' to begin."
@@ -130,18 +149,8 @@ def ask_ai():
     
     return jsonify({"answer": response, "buttons": buttons})
 
-def get_lesson(level, subject, progress):
-    lessons = {
-        "literacy": ["Lesson 1: Letters and Sounds", "Lesson 2: Forming Words", "Lesson 3: Understanding Sentences"],
-        "math": ["Lesson 1: Counting Numbers", "Lesson 2: Basic Addition", "Lesson 3: Multiplication Basics"],
-        "science": ["Lesson 1: Introduction to Science", "Lesson 2: Basic Biology", "Lesson 3: Chemistry Basics"],
-        "technology": ["Lesson 1: Introduction to Computers", "Lesson 2: The Internet", "Lesson 3: Basic Coding"],
-        "business": ["Lesson 1: Understanding Business", "Lesson 2: Financial Literacy", "Lesson 3: Starting a Business"]
-    }
-    
-    if progress > len(lessons[subject]):
-        return "You've completed this subject! Would you like to start another subject?"
-    return lessons[subject][progress - 1]
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
