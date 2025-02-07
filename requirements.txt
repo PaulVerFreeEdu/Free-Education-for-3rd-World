@@ -1,0 +1,8 @@
+requests
+sqlite3
+json
+speechrecognition
+googletrans==4.0.0-rc1
+deepl
+logging
+flask
