@@ -6,7 +6,7 @@ import speech_recognition as sr
 from googletrans import Translator
 import deepl
 import logging
-from flask import Flask
+from flask import Flask, jsonify, request
 
 # Configuratie van logging voor foutopsporing en analyse
 logging.basicConfig(filename='ai_education.log', level=logging.INFO, 
@@ -17,6 +17,28 @@ app = Flask(__name__)
 @app.route("/")
 def home():
     return "AI Education Platform is Running!"
+
+# API-route om beschikbare cursussen op te halen
+@app.route("/courses", methods=["GET"])
+def get_courses():
+    platform = AIEducationPlatform()
+    return jsonify({"courses": list(platform.courses.keys())})
+
+# API-route om de AI een vraag te stellen
+@app.route("/ask", methods=["POST"])
+def ask_ai():
+    data = request.json
+    question = data.get("question", "")
+    if not question:
+        return jsonify({"error": "Please provide a question"}), 400
+    
+    response = f"That is an interesting question: '{question}'. Try to think critically!"
+    return jsonify({"answer": response})
+
+# API-route om gebruikersvoortgang op te halen (mocked)
+@app.route("/progress/<user_id>", methods=["GET"])
+def get_progress(user_id):
+    return jsonify({"user_id": user_id, "progress": "Not implemented yet"})
 
 class AIEducationPlatform:
     def __init__(self):
@@ -89,10 +111,6 @@ class AIEducationPlatform:
         conn.commit()
         conn.close()
         logging.info("Database geconfigureerd.")
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
