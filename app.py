@@ -7,7 +7,7 @@ from googletrans import Translator
 import deepl
 import logging
 from flask import Flask, jsonify, request, render_template_string
-from openai import OpenAI
+import openai
 
 # Configuratie van logging voor foutopsporing en analyse
 logging.basicConfig(filename='ai_education.log', level=logging.INFO, 
@@ -18,17 +18,19 @@ user_sessions = {}  # Store user progress
 
 # OpenAI API Key (Replace with actual API key)
 OPENAI_API_KEY = "your_openai_api_key"
-client = OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
 # Function to generate AI-powered lessons dynamically
 def generate_lesson(user_question):
     prompt = f"Create an educational lesson based on this question: {user_question}. Include an explanation, examples, and a quiz question."
-    response = client.Completion.create(
+    response = openai.ChatCompletion.create(
         model="gpt-4",
-        prompt=prompt,
-        max_tokens=300
+        messages=[
+            {"role": "system", "content": "You are an educational AI assistant."},
+            {"role": "user", "content": prompt}
+        ]
     )
-    return response.choices[0].text.strip()
+    return response["choices"][0]["message"]["content"].strip()
 
 @app.route("/ask", methods=["POST"])
 def ask_ai():
