@@ -56,24 +56,43 @@ def get_courses():
 @app.route("/ask", methods=["POST"])
 def ask_ai():
     data = request.json
-    question = data.get("question", "").lower()
+    question = data.get("question", "").strip()
     if not question:
         return jsonify({"error": "Please provide a question"}), 400
     
     platform = AIEducationPlatform()
-    best_match = None
-    best_match_score = 0
     
-    for course, description in platform.courses.items():
-        match_score = sum(1 for word in question.split() if word in course.lower())
-        if match_score > best_match_score:
-            best_match = course
-            best_match_score = match_score
+    # Detect the language of the input question
+    translator = Translator()
+    detected_lang = translator.detect(question).lang
     
-    if best_match:
-        response = f"Based on your question, you might be interested in '{best_match}': {platform.courses[best_match]}"
+    # Provide general guidance if the question is broad
+    general_responses = [
+        "I can help you learn many things! Are you interested in math, science, languages, or something else?",
+        "There are many subjects to explore! Would you like to start with literacy, technology, or problem-solving skills?",
+        "Education is powerful! Do you need help with basic skills, advanced knowledge, or career planning?"
+    ]
+    
+    if len(question.split()) <= 3:  # If the question is too vague
+        response = random.choice(general_responses)
     else:
-        response = "I couldn't find an exact match, but keep exploring and learning! Try asking in a different way."
+        # Match question to the best course
+        best_match = None
+        best_match_score = 0
+        for course, description in platform.courses.items():
+            match_score = sum(1 for word in question.lower().split() if word in course.lower())
+            if match_score > best_match_score:
+                best_match = course
+                best_match_score = match_score
+        
+        if best_match:
+            response = f"Based on your question, you might be interested in '{best_match}': {platform.courses[best_match]}"
+        else:
+            response = "I couldn't find an exact match, but keep exploring and learning! Try asking in a different way."
+    
+    # Translate response back to detected language if necessary
+    if detected_lang != "en":
+        response = translator.translate(response, dest=detected_lang).text
     
     return jsonify({"answer": response})
 
@@ -108,18 +127,6 @@ class AIEducationPlatform:
             "renewable_energy": "Hoe kun je zonne- en windenergie gebruiken in je gemeenschap?",
             "disaster_preparedness": "Wat te doen bij natuurrampen zoals overstromingen en aardbevingen?",
             "basic_business": "Hoe start en beheer je een klein bedrijf?",
-            "academic_writing": "Hoe schrijf je een academische paper?",
-            "self_study_skills": "Zelfstudiehandleiding voor universitair niveau.",
-            "exam_preparation": "Voorbereiding op SAT, TOEFL en andere toelatingsexamens.",
-            "engineering_basics": "Introductie tot ingenieurswetenschappen.",
-            "medical_advanced": "Geavanceerde medische kennis: pathologie en volksgezondheid.",
-            "climate_science": "Milieuwetenschappen en klimaatverandering.",
-            "international_trade": "Wereldhandel, economie en zakelijke strategieën.",
-            "local_problem_solutions": "Praktische oplossingen voor lokale uitdagingen in ontwikkelingslanden.",
-            "africa_solutions": "Specifieke oplossingen voor uitdagingen in Afrika.",
-            "south_america_solutions": "Praktische lessen gericht op Zuid-Amerikaanse problematiek.",
-            "asia_solutions": "Duurzame ontwikkelingsoplossingen voor Aziatische regio's.",
-            "advanced_engineering": "Geavanceerde ingenieurswetenschappen en toepassingen."
         }
         self.translator = Translator()
         self.deepl_translator = deepl.Translator("your-deepl-api-key")
