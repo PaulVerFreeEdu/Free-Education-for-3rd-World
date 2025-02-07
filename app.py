@@ -110,3 +110,14 @@ class AIEducationPlatform:
     def optimized_offline_access(self):
         logging.info("Offline modus geoptimaliseerd en beschikbaar.")
         return "Je lessen en voortgang worden lokaal opgeslagen. Synchronisatie zal plaatsvinden zodra er een internetverbinding beschikbaar is."
+
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "AI Education Platform is Running!"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
