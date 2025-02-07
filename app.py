@@ -21,12 +21,12 @@ OPENAI_API_KEY = "your_openai_api_key"
 openai.api_key = OPENAI_API_KEY
 
 # Function to generate AI-powered lessons dynamically
-def generate_lesson(user_question):
-    prompt = f"Create an educational lesson based on this question: {user_question}. Include an explanation, examples, and a quiz question."
+def generate_lesson(subject, progress):
+    prompt = f"Create an educational lesson for a beginner student in {subject}. This is lesson {progress}. Include an explanation, examples, and a quiz question."
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are an educational AI assistant."},
+            {"role": "system", "content": "You are an educational AI assistant providing structured lessons."},
             {"role": "user", "content": prompt}
         ]
     )
@@ -65,6 +65,20 @@ HTML_TEMPLATE = """
             });
             let data = await response.json();
             chatBox.innerHTML += `<p class='message ai'><strong>AI:</strong> ${data.answer}</p>`;
+            updateButtons(data.buttons);
+        }
+        
+        function updateButtons(buttons) {
+            let buttonContainer = document.getElementById("buttons");
+            buttonContainer.innerHTML = "";
+            if (buttons) {
+                buttons.forEach(text => {
+                    let btn = document.createElement("button");
+                    btn.innerText = text;
+                    btn.onclick = () => askAI(text);
+                    buttonContainer.appendChild(btn);
+                });
+            }
         }
         
         document.addEventListener("DOMContentLoaded", function() {
@@ -80,7 +94,9 @@ HTML_TEMPLATE = """
     <h1>Welcome to AI Education Chat</h1>
     <div class="chat-box">
         <div id="chat"></div>
-        <button onclick="askAI('Start Learning')">Start Learning</button>
+        <div id="buttons">
+            <button onclick="askAI('Start Learning')">Start Learning</button>
+        </div>
         <input type="text" id="question" placeholder="Type here...">
     </div>
 </body>
@@ -98,20 +114,25 @@ def ask_ai():
     question = data.get("question", "").strip().lower()
     
     if user_id not in user_sessions:
-        user_sessions[user_id] = {"progress": 0}
+        user_sessions[user_id] = {"subject": None, "progress": 1}
     
     if "start learning" in question:
         response = "What subject would you like to learn?"
         buttons = ["Math", "Science", "Literacy", "Technology"]
-    else:
-        lesson_content = generate_lesson(question)
-        response = lesson_content
+    elif question in ["math", "science", "literacy", "technology"]:
+        user_sessions[user_id]["subject"] = question
+        user_sessions[user_id]["progress"] = 1
+        response = generate_lesson(question, user_sessions[user_id]["progress"])
         buttons = ["Next Lesson"]
+    elif question == "next lesson":
+        user_sessions[user_id]["progress"] += 1
+        response = generate_lesson(user_sessions[user_id]["subject"], user_sessions[user_id]["progress"])
+        buttons = ["Next Lesson"]
+    else:
+        response = "I can guide you step by step! Type 'Start Learning' to begin."
+        buttons = []
     
     return jsonify({"answer": response, "buttons": buttons})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
