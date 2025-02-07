@@ -5,3 +5,4 @@ deepl
 flask
 logging
 beautifulsoup4
+openai
