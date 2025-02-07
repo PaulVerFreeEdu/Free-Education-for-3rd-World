@@ -6,10 +6,17 @@ import speech_recognition as sr
 from googletrans import Translator
 import deepl
 import logging
+from flask import Flask
 
 # Configuratie van logging voor foutopsporing en analyse
 logging.basicConfig(filename='ai_education.log', level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "AI Education Platform is Running!"
 
 class AIEducationPlatform:
     def __init__(self):
@@ -82,42 +89,10 @@ class AIEducationPlatform:
         conn.commit()
         conn.close()
         logging.info("Database geconfigureerd.")
-    
-    def log_user_activity(self, user_id, action):
-        logging.info(f"Gebruiker {user_id} heeft actie uitgevoerd: {action}")
-    
-    def analyze_progress(self, user_id):
-        user_data = self.get_user_progress(user_id)
-        progress_message = ""
-        if user_data["progress"] < 50:
-            progress_message = "Je bent goed op weg! Probeer een extra oefening uit je huidige cursus."
-        elif 50 <= user_data["progress"] < 80:
-            progress_message = "Geweldig! Overweeg een verdiepingscursus om je kennis uit te breiden."
-        else:
-            progress_message = "Je hebt veel geleerd! Misschien is het tijd om je kennis toe te passen in een community-project."
-        logging.info(f"Voortgangsanalyse voor gebruiker {user_id}: {progress_message}")
-        return progress_message
-    
-    def assign_mentor(self, user_id):
-        logging.info(f"Mentor toegewezen aan gebruiker {user_id}.")
-        return "Je mentor is toegewezen! Je kunt nu vragen stellen en samenwerken aan real-world projecten."
-    
-    def get_real_world_project(self, user_id):
-        project_suggestion = "Op basis van je voortgang raden we aan om deel te nemen aan een lokaal zonne-energieproject om duurzame stroomoplossingen te leren implementeren."
-        logging.info(f"Projectaanbeveling voor gebruiker {user_id}: {project_suggestion}")
-        return project_suggestion
-    
-    def optimized_offline_access(self):
-        logging.info("Offline modus geoptimaliseerd en beschikbaar.")
-        return "Je lessen en voortgang worden lokaal opgeslagen. Synchronisatie zal plaatsvinden zodra er een internetverbinding beschikbaar is."
 
-from flask import Flask
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
 
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "AI Education Platform is Running!"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
